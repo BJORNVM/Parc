@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Parc.Data;
+using Parc.Models;
 using Parc.Services;
 using System;
 using System.Threading;
@@ -11,7 +12,28 @@ namespace Parc.Sandbox
     {
         static void Main(string[] args)
         {
-            // LOGGER FACTORY
+            // SETUP
+            string parcSQLConnectionString = @"Server=MORLM752\PARC; Database=BG01; Trusted_Connection=True";
+            string productionSQLConnectionString = @"Server=secret";
+            string logSQLConnectionString = @"Server=MORLM752\PARC; Database=LOGS; Trusted_Connection=True";
+
+            ILoggerFactory loggerFactory = CreateLoggerFactory();
+            IParcPersistance parcPersistance = CreateParcPersistance(loggerFactory, parcSQLConnectionString);
+            IProductionPersistance<DeltavEvent> productionPersistance = CreateProductionPersistance<DeltavEvent>(loggerFactory, productionSQLConnectionString);
+            ILogPersistance logPersistance = CreateLogPersistance(loggerFactory, logSQLConnectionString);
+            ImportService<DeltavEvent> importService = CreateImportService(loggerFactory, parcPersistance, productionPersistance, logPersistance);
+
+
+            // START IMPORT
+            importService.ImportEvents();
+        }
+
+
+
+
+
+        private static ILoggerFactory CreateLoggerFactory()
+        {
             ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
                 builder
                     .AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning) // Only log EFCore warning (or higher) messages
@@ -22,33 +44,40 @@ namespace Parc.Sandbox
                     })
             );
 
+            return loggerFactory;
+        }
 
 
-
-            // PARC PERSISTANCE SETUP
-
+        private static IParcPersistance CreateParcPersistance(ILoggerFactory loggerFactory, string sqlConnectionString)
+        {
             // DbContext
             var parcDbContextOptions = new DbContextOptionsBuilder<ParcDbContext>()
                 .UseLoggerFactory(loggerFactory)
-                .UseSqlServer(@"Connectionstring parc sql server")
+                .UseSqlServer(sqlConnectionString)
                 .Options;
             var parcDbContext = new ParcDbContext(parcDbContextOptions);
+
+
+
+            // TODO: Move creation of databases
+            parcDbContext.Database.EnsureCreated();
+
+
 
             // Logger
             ILogger<ParcPersistance> parcPersistanceLogger = loggerFactory.CreateLogger<ParcPersistance>();
 
             // Parc persistance
-            IParcPersistance parcPersistance = new ParcPersistance(parcDbContext, parcPersistanceLogger);
+            return new ParcPersistance(parcDbContext, parcPersistanceLogger);
+        }
 
 
-
-
-            // PRODUCTION PERSISTANCE SETUP
-
+        private static IProductionPersistance<T> CreateProductionPersistance<T>(ILoggerFactory loggerFactory, string sqlConnectionString)
+        {
             // DbContext
             var productionDbContextOptions = new DbContextOptionsBuilder<DeltavDbContext>()
                 .UseLoggerFactory(loggerFactory)
-                .UseSqlServer(@"Connectionstring deltav sql server")
+                .UseSqlServer(sqlConnectionString)
                 .Options;
             var productionDbContext = new DeltavDbContext(productionDbContextOptions);
 
@@ -56,30 +85,40 @@ namespace Parc.Sandbox
             ILogger<DeltavPersistance> productionPersistanceLogger = loggerFactory.CreateLogger<DeltavPersistance>();
 
             // Production persistance
-            IProductionPersistance productionPersistance = new DeltavPersistance(productionDbContext, productionPersistanceLogger);
+            return (IProductionPersistance<T>) new DeltavPersistance(productionDbContext, productionPersistanceLogger);
+        }
+
+
+        private static ILogPersistance CreateLogPersistance(ILoggerFactory loggerFactory, string sqlConnectionString)
+        {
+            // DbContext
+            var logDbContextOptions = new DbContextOptionsBuilder<LogDbContext>()
+                .UseLoggerFactory(loggerFactory)
+                .UseSqlServer(sqlConnectionString)
+                .Options;
+            var logDbContext = new LogDbContext(logDbContextOptions);
 
 
 
-
-            // IMPORT SERVICE SETUP
-            ILogger<ImportService> importServiceLogger = loggerFactory.CreateLogger<ImportService>();
-            ImportService importService = new ImportService(parcPersistance, productionPersistance, importServiceLogger);
+            // TODO: Move creation of databases
+            logDbContext.Database.EnsureCreated();
 
 
 
+            // Logger
+            ILogger<LogPersistance> logPersistanceLogger = loggerFactory.CreateLogger<LogPersistance>();
 
-            // Start import and repeat every 5 minutes
-            var timer = new Timer(
-                e => importService.ImportEvents(),
-                null,
-                TimeSpan.Zero,
-                TimeSpan.FromMinutes(2));
+            // Log persistance
+            return new LogPersistance(logDbContext, logPersistanceLogger);
+        }
 
-            // Keep program alive
-            while (true)
-            {
 
-            }
+        private static ImportService<T> CreateImportService<T>(ILoggerFactory loggerFactory, IParcPersistance parcPersistance, IProductionPersistance<T> productionPersistance, ILogPersistance logPersistance)
+        {
+            // Logger
+            ILogger<ImportService<T>> importServiceLogger = loggerFactory.CreateLogger<ImportService<T>>();
+
+            return new ImportService<T>(parcPersistance, productionPersistance, logPersistance, importServiceLogger);
         }
     }
 }

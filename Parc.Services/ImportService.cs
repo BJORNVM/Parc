@@ -6,38 +6,42 @@ using System.Linq;
 
 namespace Parc.Services
 {
-    public class ImportService
+    public class ImportService<T>
     {
         private readonly IParcPersistance _parcPersistance;
-        private readonly IProductionPersistance _productionPersistance;
-        private readonly ILogger<ImportService> _logger;
+        private readonly IProductionPersistance<T> _productionPersistance;
+        private readonly ILogPersistance _logPersistance;
+        private readonly ILogger<ImportService<T>> _logger;
 
-        public ImportService(IParcPersistance parcPersistance, IProductionPersistance productionPersistance, ILogger<ImportService> logger)
+        public ImportService(IParcPersistance parcPersistance, IProductionPersistance<T> productionPersistance, ILogPersistance logPersistance, ILogger<ImportService<T>> logger)
         {
             _parcPersistance = parcPersistance;
             _productionPersistance = productionPersistance;
+            _logPersistance = logPersistance;
             _logger = logger;
         }
 
         public void ImportEvents()
         {
-                _logger.LogInformation("Start of import");
+            DateTime startTime = DateTime.Now;
 
-                List<ParcEvent> productionEvents = _productionPersistance.GetEvents();
-                List<ParcEvent> parcEvents = _parcPersistance.GetEvents();
+            _logger.LogInformation("Start of import");
 
-                _logger.LogInformation("Comparing events...");
+            List<ParcEvent> productionEvents = _productionPersistance.GetEvents();
+            List<ParcEvent> newEvents = _parcPersistance.FindNewEvents(productionEvents);
 
-                List<DateTime> parcEventTimestamps = parcEvents.Select(e => e.Timestamp).ToList();
-                List<ParcEvent> newEvents = productionEvents
-                    .Where(de => !parcEventTimestamps.Contains(de.Timestamp))
-                    .ToList();
+            _parcPersistance.SaveEvents(newEvents);
 
-                _logger.LogInformation("Found { count } new events", newEvents.Count);
+            TimeSpan elapsedTime = DateTime.Now.Subtract(startTime);
 
-                _parcPersistance.SaveEvents(newEvents);
+            _logPersistance.SaveImportResult(new ImportResult 
+            { 
+                Database = "BG01", // TODO: Databases...
+                Success = true,
+                Result = $"Successfully imported { newEvents.Count } new events in { elapsedTime.ToString() }" 
+            });
 
-                _logger.LogInformation("End of import");
+            _logger.LogInformation("End of import. Successfully imported { Count } new events in { time } seconds", newEvents.Count, elapsedTime.TotalSeconds);
         }
     }
 }

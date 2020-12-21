@@ -1,0 +1,66 @@
+﻿/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
+for details on configuring this project to bundle and minify static web assets. */
+
+
+
+/* --------------------------------------------------------------------------------------------- */
+/* ------------------------------------------- BJORN ------------------------------------------- */
+/* --------------------------------------------------------------------------------------------- */
+
+/* General */
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    margin-bottom: 80px; /* Margin bottom by footer height */
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    height: 80px;
+}
+
+
+
+/* Custom classes */
+
+.text-muted-extra {
+    color: #b5b5b5 !important;
+}
+
+
+
+/* Bootstrap overrides */
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1600px; /* Increase max-width */
+    }
+}
+
+label {
+    margin-bottom: 0; /* Remove extra margin */
+}
+
+.table-sm td, .table-sm th {
+    padding: .3rem 1rem; /* Improve readability */
+}
+
+.form-group {
+    margin-bottom: .5rem; /* Decrease margin */
+}
+
+.form-text {
+    margin-top: 0; /* Remove margin */
+}
+
+.rounded {
+    border-radius: .75rem !important; /* Increase radius */
+}
+
+
+/* --------------------------------------------------------------------------------------------- */

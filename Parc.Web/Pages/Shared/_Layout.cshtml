@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Parc</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.min.css" />
+</head>
+<body>
+    <header>
+        <div class="mb-4">
+            <div class="container">
+                <div class="d-flex flex-column flex-lg-row align-items-center py-4">
+                    <a asp-page="./index">
+                        <img alt="Agfa" src="~/img/Agfa_logo_color_135_35-1.png">
+                    </a>
+                    <nav class="mt-2 mt-lg-0 ml-lg-auto">
+                        <a class="text-dark mr-2" asp-page="./events">Events</a>
+                        <a class="text-dark disabled" asp-page="./index">Status</a>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="d-flex align-items-end justify-content-center w-100 pb-3">
+        <small class="text-muted-extra">&copy; Agfa 2020</small>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

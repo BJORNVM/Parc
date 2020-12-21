@@ -1,0 +1,159 @@
+﻿@page
+@model EventsModel
+@{
+    ViewData["Title"] = "Events";
+
+    var prevDisabled = !Model.ParcEvents.HasPreviousPage ? "disabled" : "";
+    var nextDisabled = !Model.ParcEvents.HasNextPage ? "disabled" : "";
+}
+
+<div class="row">
+    <div class="col-xl-auto mb-4 mb-xl-0">
+        <section class="bg-light rounded p-3">
+            <form asp-page="./events" method="get" autocomplete="off">
+                <div class="form-group">
+                    <label>Database</label>
+                    <select class="form-control form-control-sm disabled">
+                        <option selected>BG01 (DV20PLUS.AGFA.BE)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>From</label>
+                    <input asp-for="From" class="form-control form-control-sm">
+                </div>
+                <div class="form-group">
+                    <label>To</label>
+                    <input asp-for="To" class="form-control form-control-sm">
+                </div>
+                <div class="form-group">
+                    <label>Origin</label>
+                    <input asp-for="OriginFilter" class="form-control form-control-sm">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <input asp-for="MessageFilter" class="form-control form-control-sm">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <input asp-for="StatusFilter" class="form-control form-control-sm">
+                </div>
+                <div class="form-group">
+                    <label>Sort on</label>
+                    <select asp-for="SortOption" asp-items="Html.GetEnumSelectList<@EventsModel.Sort>()" class="form-control form-control-sm"></select>
+                </div>
+                <div class="form-group">
+                    <label>Direction</label>
+                    <select asp-for="SortDirectionOption" asp-items="Html.GetEnumSelectList<@EventsModel.SortDirection>()" class="form-control form-control-sm"></select>
+                </div>
+                <div class="form-group">
+                    <label>Page size</label>
+                    <select asp-for="PageSize" asp-items="Model.PageSizes" class="form-control form-control-sm"></select>
+                </div>
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-sm btn-block btn-outline-primary">Search</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="col">
+        <section class="mb-4">
+            <div class="d-flex">
+                <div class="bg-light rounded p-3">
+                    <h3 class="mb-0">BG01 (DV20PLUS.AGFA.BE)</h3>
+                    <small class="text-muted">Last import <span class="text-info">@Model.LastSuccessfullImport.ToString("f", System.Globalization.CultureInfo.CreateSpecificCulture("en-ES"))</span></small>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="bg-light rounded px-3 py-2 mb-3">
+                <div class="d-flex align-items-center">
+                    <span class="text-muted mr-auto">Found <span class="font-weight-bold">@Model.ParcEvents.SourceCount</span> events</span>
+                    <span class="text-muted mr-3">Page @(Model.ParcEvents.PageIndex) of @(Model.ParcEvents.TotalPages)</span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @prevDisabled">
+                                <a class="page-link"
+                                   asp-page="./events"
+                                   asp-route-from="@Model.From.ToString("s")"
+                                   asp-route-to="@Model.To.ToString("s")"
+                                   asp-route-originFilter="@(Model.OriginFilter)"
+                                   asp-route-messageFilter="@(Model.MessageFilter)"
+                                   asp-route-statusFilter="@(Model.StatusFilter)"
+                                   asp-route-sortOption="@(Model.SortOption)"
+                                   asp-route-sortDirectionOption="@(Model.SortDirectionOption)"
+                                   asp-route-pageSize="@(Model.PageSize)"
+                                   asp-route-pageIndex="@(Model.ParcEvents.PageIndex - 1)">
+                                    <
+                                </a>
+                            </li>
+                            <li class="page-item @nextDisabled">
+                                <a class="page-link"
+                                   asp-page="./events"
+                                   asp-route-from="@Model.From.ToString("s")"
+                                   asp-route-to="@Model.To.ToString("s")"
+                                   asp-route-originFilter="@(Model.OriginFilter)"
+                                   asp-route-messageFilter="@(Model.MessageFilter)"
+                                   asp-route-statusFilter="@(Model.StatusFilter)"
+                                   asp-route-sortOption="@(Model.SortOption)"
+                                   asp-route-sortDirectionOption="@(Model.SortDirectionOption)"
+                                   asp-route-pageSize="@(Model.PageSize)"
+                                   asp-route-pageIndex="@(Model.ParcEvents.PageIndex + 1)">
+                                    >
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+            <table class="table table-sm table-borderless table-hover">
+                <thead>
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.ParcEvents[0].Timestamp)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.ParcEvents[0].Origin)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.ParcEvents[0].Message)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.ParcEvents[0].Status)
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    @foreach (var parcEvent in Model.ParcEvents)
+                    {
+                        @* If event.Status contains "INACT" color text gray, else color text according to event.Type (CHANGE = blue, ALARM = red) *@
+                        string colorClass = parcEvent.Status.Contains("INACT") ? "text-muted-extra" : parcEvent.Type switch
+                        {
+                            "EVENT" => "",
+                            "CHANGE" => "text-primary",
+                            "ALARM" => "text-danger",
+                            _ => ""
+                        };
+
+                        <tr title="Identifier: @parcEvent.Id &#013Type: @parcEvent.Type &#013Category: @parcEvent.Category &#013Priority: @parcEvent.Priority" class="@colorClass">
+                            <td>
+                                @parcEvent.Timestamp
+                            </td>
+                            <td>
+                                @parcEvent.Origin
+                            </td>
+                            <td>
+                                @parcEvent.Message
+                            </td>
+                            <td>
+                                @parcEvent.Status
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+</div>
