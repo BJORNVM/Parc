@@ -2,7 +2,7 @@
 
 namespace Parc.Models
 {
-    public class DeltavEvent
+    public class DeltaVEvent
     {
         public DateTime Date_Time { get; set; }
         public short FracSec { get; set; }

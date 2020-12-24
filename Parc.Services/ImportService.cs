@@ -10,14 +10,12 @@ namespace Parc.Services
     {
         private readonly IParcPersistance _parcPersistance;
         private readonly IProductionPersistance<T> _productionPersistance;
-        private readonly ILogPersistance _logPersistance;
         private readonly ILogger<ImportService<T>> _logger;
 
-        public ImportService(IParcPersistance parcPersistance, IProductionPersistance<T> productionPersistance, ILogPersistance logPersistance, ILogger<ImportService<T>> logger)
+        public ImportService(IParcPersistance parcPersistance, IProductionPersistance<T> productionPersistance, ILogger<ImportService<T>> logger)
         {
             _parcPersistance = parcPersistance;
             _productionPersistance = productionPersistance;
-            _logPersistance = logPersistance;
             _logger = logger;
         }
 
@@ -25,23 +23,25 @@ namespace Parc.Services
         {
             DateTime startTime = DateTime.Now;
 
-            _logger.LogInformation("Start of import");
+            try
+            {
+                _logger.LogInformation("--- Start of import ---");
 
-            List<ParcEvent> productionEvents = _productionPersistance.GetEvents();
-            List<ParcEvent> newEvents = _parcPersistance.FindNewEvents(productionEvents);
+                List<ParcEvent> productionEvents = _productionPersistance.GetEvents();
+                List<ParcEvent> newEvents = _parcPersistance.FindNewEvents(productionEvents);
 
-            _parcPersistance.SaveEvents(newEvents);
+                _parcPersistance.SaveEvents(newEvents);
 
-            TimeSpan elapsedTime = DateTime.Now.Subtract(startTime);
-
-            _logPersistance.SaveImportResult(new ImportResult 
-            { 
-                Database = "BG01", // TODO: Databases...
-                Success = true,
-                Result = $"Successfully imported { newEvents.Count } new events in { elapsedTime.ToString() }" 
-            });
-
-            _logger.LogInformation("End of import. Successfully imported { Count } new events in { time } seconds", newEvents.Count, elapsedTime.TotalSeconds);
+                _logger.LogInformation("Successfully imported { Count } new events in { seconds } seconds", newEvents.Count, Math.Round(DateTime.Now.Subtract(startTime).TotalSeconds));
+            } 
+            catch(Exception e)
+            {
+                _logger.LogError("Error importing events: { message }", e.Message);
+            }
+            finally
+            {
+                _logger.LogInformation("--- End of import ---");
+            }
         }
     }
 }

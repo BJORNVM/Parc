@@ -6,26 +6,30 @@ using System.Linq;
 
 namespace Parc.Data
 {
-    public class DeltavPersistance : IProductionPersistance<DeltavEvent>
+    public class DeltavPersistance : IProductionPersistance<DeltaVEvent>
     {
-        public readonly DeltavDbContext _ctx;
+        private readonly DeltavDbContext _ctx;
         private readonly ILogger<DeltavPersistance> _logger;
 
-        public DeltavPersistance(DeltavDbContext ctx, ILogger<DeltavPersistance> logger)
+        public DeltavPersistance(DeltavDbContext ctx, ILogger<DeltavPersistance> logger, string name)
         {
             _ctx = ctx;
             _logger = logger;
+
+            Name = name;
         }
+
+        public string Name { get; set; }
 
         public List<ParcEvent> GetEvents()
         {
-            _logger.LogInformation("Fetching events from DeltaV database...");
+            _logger.LogInformation($"Fetching events from { Name }...");
 
-            List<DeltavEvent> productionEvents = _ctx.Events.ToList();
+            List<DeltaVEvent> productionEvents = _ctx.Events.ToList();
 
             _logger.LogInformation("Found { count } events", productionEvents.Count);
 
-            _logger.LogInformation("Projecting DeltaV events to Parc Events...");
+            _logger.LogInformation("Projecting DeltaV events to Parc events...");
 
             List<ParcEvent> projectedEvents = productionEvents
                 .Select(e => ProjectToParcEvent(e))
@@ -36,13 +40,15 @@ namespace Parc.Data
             return projectedEvents;
         }
 
-        public ParcEvent ProjectToParcEvent(DeltavEvent productionEvent) => new ParcEvent
+        public ParcEvent ProjectToParcEvent(DeltaVEvent productionEvent) => new ParcEvent
         {
             // Date_Time is stored as UTC time -> convert to local (= +1h)
             // FracSec is stored as 1/1000th of one second -> add to timestamp
             Timestamp = productionEvent.Date_Time
                 .ToLocalTime()
                 .AddMilliseconds(productionEvent.FracSec / 10),
+
+            Source = Name,
 
             Type = productionEvent.Event_Type,
             Category = productionEvent.Category,

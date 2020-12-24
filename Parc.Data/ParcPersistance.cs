@@ -19,7 +19,7 @@ namespace Parc.Data
 
         public List<ParcEvent> GetEvents()
         {
-            _logger.LogInformation("Fetching events from database...");
+            _logger.LogInformation("Fetching events...");
 
             List<ParcEvent> parcEvents = _ctx.Events.ToList();
 
@@ -30,12 +30,15 @@ namespace Parc.Data
 
         public List<ParcEvent> FindNewEvents(List<ParcEvent> events)
         {
-            _logger.LogInformation("Looking for new events in list of { count } events...", events.Count);
+            _logger.LogInformation("Creating hashset of unique identifiers from existing events...");
 
-            List<DateTime> existingTimestamps = _ctx.Events.Select(e => e.Timestamp).ToList();
-            List<ParcEvent> newEvents = events
-                .Where(e => !existingTimestamps.Contains(e.Timestamp))
-                .ToList();
+            HashSet<string> uniqueIdentifiers = _ctx.Events.Select(e => e.UniqueIdentifier).ToHashSet();
+
+            _logger.LogInformation("Created hashset of unique identifiers with { count } members", uniqueIdentifiers.Count());
+
+            _logger.LogInformation("Comparing { countGiven } given events with { countExisting } existing events to find new events...", events.Count, uniqueIdentifiers.Count);
+
+            List<ParcEvent> newEvents = events.Where(e => !uniqueIdentifiers.Contains(e.UniqueIdentifier)).ToList();
 
             _logger.LogInformation("Found { count } new events", newEvents.Count);
 
@@ -44,7 +47,7 @@ namespace Parc.Data
 
         public void SaveEvents(List<ParcEvent> events)
         {
-            _logger.LogInformation("Adding { count } events to database...", events.Count);
+            _logger.LogInformation("Adding { count } events...", events.Count);
 
             _ctx.Events.AddRange(events);
             _ctx.SaveChanges();

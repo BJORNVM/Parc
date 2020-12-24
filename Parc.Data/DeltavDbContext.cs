@@ -14,11 +14,11 @@ namespace Parc.Data
         {
             // Define "Journal" as Events table in database
             // Define "Ord" as primary key instead of default "Id"
-            modelBuilder.Entity<DeltavEvent>()
+            modelBuilder.Entity<DeltaVEvent>()
                 .ToTable("Journal")
                 .HasKey(e => e.Ord);
         }
 
-        public DbSet<DeltavEvent> Events { get; set; }
+        public DbSet<DeltaVEvent> Events { get; set; }
     }
 }
