@@ -28,7 +28,14 @@ namespace Parc.Services
                 _logger.LogInformation("--- Start of import ---");
 
                 List<ParcEvent> productionEvents = _productionPersistance.GetEvents();
-                List<ParcEvent> newEvents = _parcPersistance.FindNewEvents(productionEvents);
+
+                _logger.LogInformation("Removing possible duplicates from { count } production events...", productionEvents.Count);
+
+                List<ParcEvent> distinctProductionEvents = productionEvents.Distinct().ToList();
+
+                _logger.LogInformation("Removed { removedCount } duplicates, resulting in { distinctCount} distinct production events", productionEvents.Count - distinctProductionEvents.Count, distinctProductionEvents.Count);
+
+                List<ParcEvent> newEvents = _parcPersistance.FindNewEvents(distinctProductionEvents);
 
                 _parcPersistance.SaveEvents(newEvents);
 

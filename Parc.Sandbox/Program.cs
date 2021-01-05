@@ -3,6 +3,9 @@ using Microsoft.Extensions.Logging;
 using Parc.Data;
 using Parc.Models;
 using Parc.Services;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Parc.Sandbox
 {
@@ -22,77 +25,79 @@ namespace Parc.Sandbox
 
         static void Main(string[] args)
         {
-            // Setup
-            string parcPersistanceSQLConnectionString = @"Server=MORLM752\PARC; Database=PARC; Trusted_Connection=True";
-            string productionPersistanceName = "BG01 (DV20PLUS.AGFA.BE)";
-            string productionPersistanceSQLConnectionString = @"Server=";
-
-            IParcPersistance parcPersistance = CreateParcPersistance(parcPersistanceSQLConnectionString);
-            IProductionPersistance<DeltaVEvent> productionPersistance = CreateProductionPersistance<DeltaVEvent>(productionPersistanceSQLConnectionString, productionPersistanceName);
-            ImportService<DeltaVEvent> importService = CreateImportService(parcPersistance, productionPersistance);
-
-            // Ensure existance of Parc database
-            // TODO: Remove creation of databases...
-            EnsureExistanceOfParcDatabase(parcPersistanceSQLConnectionString);
-
-            // Start import of production events to Parc persistance
-            importService.ImportEvents();
-        }
-
-
-        private static IParcPersistance CreateParcPersistance(string sqlConnectionString)
-        {
-            // DbContext
+            // Setup Parc persistance
             var parcDbContextOptions = new DbContextOptionsBuilder<ParcDbContext>()
                 .UseLoggerFactory(_loggerFactory)
-                .UseSqlServer(sqlConnectionString)
+                .UseSqlServer(@"Server=localhost; Database=Parc; Trusted_Connection=True")
                 .Options;
             var parcDbContext = new ParcDbContext(parcDbContextOptions);
 
-            // Logger
-            ILogger<ParcPersistance> parcPersistanceLogger = _loggerFactory.CreateLogger<ParcPersistance>();
-
-            // Parc persistance
-            return new ParcPersistance(parcDbContext, parcPersistanceLogger);
-        }
+            IParcPersistance parcPersistance = new ParcPersistance(
+                ctx: parcDbContext,
+                logger: _loggerFactory.CreateLogger<ParcPersistance>());
 
 
-        private static IProductionPersistance<T> CreateProductionPersistance<T>(string sqlConnectionString, string name)
-        {
-            // DbContext
+            // Setup Production persistance
+            var productionName = "AgfaProductionExample";
             var productionDbContextOptions = new DbContextOptionsBuilder<DeltavDbContext>()
                 .UseLoggerFactory(_loggerFactory)
-                .UseSqlServer(sqlConnectionString)
+                .UseSqlServer(@"Server=localhost; Database=AgfaProductionExample; Trusted_Connection=True")
                 .Options;
             var productionDbContext = new DeltavDbContext(productionDbContextOptions);
 
-            // Logger
-            ILogger<DeltavPersistance> productionPersistanceLogger = _loggerFactory.CreateLogger<DeltavPersistance>();
-
-            // Production persistance
-            return (IProductionPersistance<T>) new DeltavPersistance(productionDbContext, productionPersistanceLogger, name);
-        }
+            IProductionPersistance<DeltaVEvent> productionPersistance = new DeltavPersistance(
+                ctx: productionDbContext, 
+                logger: _loggerFactory.CreateLogger<DeltavPersistance>(), 
+                name: productionName);
 
 
-        private static ImportService<T> CreateImportService<T>(IParcPersistance parcPersistance, IProductionPersistance<T> productionPersistance)
-        {
-            // Logger
-            ILogger<ImportService<T>> importServiceLogger = _loggerFactory.CreateLogger<ImportService<T>>();
-
-            return new ImportService<T>(parcPersistance, productionPersistance, importServiceLogger);
-        }
+            // Setup ImportService
+            ImportService<DeltaVEvent> importService = new ImportService<DeltaVEvent>(
+                parcPersistance: parcPersistance, 
+                productionPersistance: productionPersistance, 
+                logger: _loggerFactory.CreateLogger<ImportService<DeltaVEvent>>());
 
 
-        private static void EnsureExistanceOfParcDatabase(string sqlConnectionString)
-        {
-            // DbContext
-            var parcDbContextOptions = new DbContextOptionsBuilder<ParcDbContext>()
-                .UseLoggerFactory(_loggerFactory)
-                .UseSqlServer(sqlConnectionString)
-                .Options;
-            var parcDbContext = new ParcDbContext(parcDbContextOptions);
 
+            // Ensure existance of databases
+            // TODO: Remove creation of databases...
             parcDbContext.Database.EnsureCreated();
+            productionDbContext.Database.EnsureCreated();
+
+
+            // Check if Production database needs to be seeded
+            if (productionDbContext.Events.Count() == 0) SeedProductionDatabase(productionDbContext);
+
+
+            // Start import of production events to Parc persistance
+            importService.ImportEvents();
+            importService.ImportEvents();
+        }
+
+        private static void SeedProductionDatabase(DeltavDbContext ctx)
+        {
+            List<DeltaVEvent> events = Enumerable
+                .Range(1, 1000)
+                .Select(n => new DeltaVEvent
+                {
+                    Date_Time = DateTime.Now.AddMinutes(-n),
+                    FracSec = (short)n,
+                })
+                .ToList();
+
+            ctx.Events.AddRange(events);
+
+            // Add 50 duplicates on purpose, these should not be imported
+            ctx.Events.AddRange(events
+                .Take(50)
+                .Select(e => new DeltaVEvent
+                {
+                    Date_Time = e.Date_Time,
+                    FracSec = e.FracSec,
+                })
+                .ToList());
+
+            ctx.SaveChanges();
         }
     }
 }
